@@ -193,22 +193,65 @@
                 shouldResetDisplay = false;
             }
 
-            // Если текущее значение в экспоненциальной записи, увеличиваем экспоненту
+            // Поддержка ручного ввода экспоненциального формата
+            if (number.toLowerCase() === 'e') {
+                // Если уже есть 'e' или 'E', не добавляем
+                if (currentInput.includes('e') || currentInput.includes('E')) {
+                    return;
+                }
+                // Добавляем 'e' для экспоненциального формата
+                currentInput += 'e';
+                updateDisplay();
+                return;
+            }
+
+            // Если число уже в экспоненциальной записи
             if (currentInput.includes('e') || currentInput.includes('E')) {
-                let num = parseFloat(currentInput);
-                if (!isNaN(num)) {
-                    // Увеличиваем число в 10 раз (что эквивалентно увеличению экспоненты на 1)
-                    num = num * 10;
-                    currentInput = num.toExponential(10);
+                // Проверяем, вводим ли мы знак экспоненты (+ или - после 'e')
+                if ((number === '+' || number === '-') && /[eE]$/.test(currentInput)) {
+                    currentInput += number;
                     updateDisplay();
                     return;
                 }
+                
+                // Если вводим цифру
+                if (/[0-9]/.test(number)) {
+                    // Проверяем формат экспоненциальной записи более строго
+                    // Ищем паттерн: число, затем 'e' или 'E', затем опциональный знак, затем цифры
+                    let expMatch = currentInput.match(/[eE]([+-]?)(\d*)$/i);
+                    if (expMatch) {
+                        let expDigits = expMatch[2];
+                        
+                        // Если экспонента уже содержит хотя бы одну цифру - это полная экспоненциальная запись
+                        // В этом случае отклоняем ввод новых цифр, чтобы избежать неожиданного поведения
+                        // Это предотвращает умножение числа на 10 при вводе цифр
+                        if (expDigits.length > 0) {
+                            // Отклоняем ввод - число уже в полной экспоненциальной записи
+                            // Пользователь должен очистить число или начать новое, чтобы ввести другое значение
+                            return;
+                        } else {
+                            // Если экспонента пустая или только со знаком - это ручное редактирование
+                            // Пользователь вручную вводит экспоненту, поэтому добавляем цифру
+                            currentInput += number;
+                            updateDisplay();
+                            return;
+                        }
+                    } else {
+                        // Если не удалось распарсить формат, отклоняем ввод для безопасности
+                        return;
+                    }
+                }
+                
+                // Если пытаемся ввести что-то другое (не цифру и не знак экспоненты), отклоняем
+                return;
             }
 
+            // Обработка точки в обычном числе
             if (number === '.' && currentInput.includes('.')) {
                 return;
             }
 
+            // Обычная логика для чисел
             if (currentInput === '0' && number !== '.') {
                 currentInput = number;
             } else {
@@ -321,8 +364,17 @@
 
             if (key >= '0' && key <= '9' || key === '.') {
                 appendNumber(key);
+            } else if (key === 'e' || key === 'E') {
+                // Поддержка ввода экспоненциального формата
+                appendNumber('e');
             } else if (key === '+' || key === '-') {
-                appendOperator(key);
+                // Проверяем, находится ли курсор после 'e' (для экспоненты)
+                // Если да, добавляем как часть числа, иначе как оператор
+                if (currentInput && /[eE]$/.test(currentInput)) {
+                    appendNumber(key);
+                } else {
+                    appendOperator(key);
+                }
             } else if (key === '*') {
                 appendOperator('*');
             } else if (key === '/') {
