@@ -158,14 +158,18 @@
         }
 
         function formatNumber(num) {
+            // Если число уже в экспоненциальной записи, возвращаем как есть
             let numStr = num.toString();
+            if (numStr.includes('e') || numStr.includes('E')) {
+                return numStr;
+            }
+            
             let digitCount = countDigits(numStr);
             
             // Если больше 10 цифр, используем экспоненциальную запись
             if (digitCount > 10) {
                 // Используем toExponential с нужным количеством значащих цифр
                 let exp = num.toExponential(10);
-                // Ограничиваем общую длину экспоненциальной записи
                 return exp;
             }
             
@@ -189,20 +193,35 @@
                 shouldResetDisplay = false;
             }
 
-            if (number === '.' && currentInput.includes('.')) {
-                return;
+            // Если текущее значение в экспоненциальной записи, увеличиваем экспоненту
+            if (currentInput.includes('e') || currentInput.includes('E')) {
+                let num = parseFloat(currentInput);
+                if (!isNaN(num)) {
+                    // Увеличиваем число в 10 раз (что эквивалентно увеличению экспоненты на 1)
+                    num = num * 10;
+                    currentInput = num.toExponential(10);
+                    updateDisplay();
+                    return;
+                }
             }
 
-            // Проверяем ограничение в 10 цифр
-            let testInput = currentInput === '0' && number !== '.' ? number : currentInput + number;
-            if (countDigits(testInput) > 10) {
-                return; // Не добавляем, если превышен лимит
+            if (number === '.' && currentInput.includes('.')) {
+                return;
             }
 
             if (currentInput === '0' && number !== '.') {
                 currentInput = number;
             } else {
                 currentInput += number;
+            }
+
+            // Проверяем, нужно ли преобразовать в экспоненциальную запись
+            let digitCount = countDigits(currentInput);
+            if (digitCount > 10) {
+                let num = parseFloat(currentInput);
+                if (!isNaN(num)) {
+                    currentInput = num.toExponential(10);
+                }
             }
 
             updateDisplay();
@@ -279,6 +298,17 @@
         function deleteLast() {
             if (currentInput.length > 1) {
                 currentInput = currentInput.slice(0, -1);
+                // Если после удаления число больше не в экспоненциальной записи, проверяем формат
+                if (!currentInput.includes('e') && !currentInput.includes('E')) {
+                    let num = parseFloat(currentInput);
+                    if (!isNaN(num)) {
+                        let digitCount = countDigits(currentInput);
+                        // Если цифр стало 10 или меньше, используем обычный формат
+                        if (digitCount <= 10) {
+                            currentInput = num.toString();
+                        }
+                    }
+                }
             } else {
                 currentInput = '0';
             }
